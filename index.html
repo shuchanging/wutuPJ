@@ -269,7 +269,7 @@
         /* 多图展示容器 - 横向布局 */
         .image-container.horizontal {
             display: flex;
-            align-items: stretch; /* 高度拉伸一致 */
+            align-items: flex-start; /* 修改：取消高度拉伸，改为顶部对齐 */
             gap: 15px; /* 默认间距 */
             overflow-x: auto;
             padding-bottom: 10px;
@@ -324,12 +324,13 @@
             left: auto;
         }
 
-        /* 单张图片样式 */
+        /* 单张图片样式（竖屏五图布局）- 自适应图片比例 */
         .image-item {
             flex: 0 0 auto;
-            width: 300px;
-            min-height: 500px;
-            max-height: 80vh;
+            width: 300px; /* 固定宽度，高度自适应 */
+            height: auto; /* 修改：高度自适应 */
+            min-height: auto; /* 修改：取消最小高度限制 */
+            max-height: none; /* 修改：取消最大高度限制 */
             position: relative;
             border-radius: 0px; /* 默认直角 */
             overflow: hidden;
@@ -341,8 +342,8 @@
             touch-action: none; /* 禁用触摸默认行为 */
         }
 
-        /* 五图布局图片自适应比例样式 */
-        .five-grid .image-item img {
+        /* 所有布局下的图片自适应比例样式 */
+        .image-item img {
             width: 100%;
             height: auto;
             object-fit: contain; /* 不拉伸，完整显示图片 */
@@ -410,21 +411,10 @@
             z-index: 10;
         }
 
-        /* 图片本身样式（关键修复：降低图片z-index，避免遮挡按钮） */
-        .image-item img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            position: relative;
-            z-index: 1; /* 图片层级低于按钮 */
-            pointer-events: none; /* 避免图片拦截拖拽/点击事件 */
-            border-radius: inherit; /* 继承容器的圆角 */
-        }
-
         /* 图片占位提示 - 有图片时隐藏 */
         .placeholder {
             width: 100%;
-            height: 100%;
+            height: 300px; /* 占位符默认高度 */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -465,7 +455,7 @@
             color: white;
         }
 
-        /* 多图上传提示 - 移除竖向相关描述 */
+        /* 多图上传提示 - 移除竖向相关描述，新增粘贴上传说明 */
         .multi-upload-tip {
             color: #cec5b1;
             font-size: 14px;
@@ -499,7 +489,6 @@
         @media (max-width: 1600px) {
             .image-item {
                 width: 280px;
-                min-height: 480px;
             }
             /* 五图布局适配 */
             .image-container.five-grid {
@@ -530,8 +519,6 @@
             }
             .image-item {
                 width: 250px;
-                min-height: 450px;
-                max-height: 70vh;
             }
             /* 五图布局移动端适配 */
             .image-container.five-grid {
@@ -592,8 +579,8 @@
     <!-- 添加图片按钮 -->
     <button class="add-image-btn" id="addImageBtn">+ 添加新图片</button>
 
-    <!-- 多图上传提示 - 移除竖向相关描述 -->
-    <div class="multi-upload-tip">✨ 新增功能：横向拼接 | 横版五图复合布局 | 自动识别上传图片数量 | 鼠标悬停图片右上角显示+/-按钮（插入/删除） | 按住图片拖拽换位 | 支持多选图片批量上传 | 自定义图片间距和圆角（实时预览）</div>
+    <!-- 多图上传提示 - 新增粘贴上传说明 -->
+    <div class="multi-upload-tip">✨ 新增功能：横向拼接 | 横版五图复合布局 | 自动识别上传图片数量 | 鼠标悬停图片右上角显示+/-按钮（插入/删除） | 按住图片拖拽换位 | 支持多选图片批量上传 | 自定义图片间距和圆角（实时预览） | 支持快捷键Ctrl+V粘贴上传图片</div>
     
     <!-- 导出容器 -->
     <div id="export-container">
@@ -616,7 +603,7 @@
     </div>
 
     <!-- 提示信息 - 已通过CSS隐藏 -->
-    <div class="tip">提示：支持横向/横版五图布局切换 | 上传多少张显示多少张 | 鼠标悬停图片右上角显示+/-按钮（插入/删除） | 按住图片拖拽换位 | 多选图片自动批量上传 | 标题可自定义 | 图片间距和圆角支持实时预览 | 下载和复制都可选择标清/高清/无损PNG质量</div>
+    <div class="tip">提示：支持横向/横版五图布局切换 | 上传多少张显示多少张 | 鼠标悬停图片右上角显示+/-按钮（插入/删除） | 按住图片拖拽换位 | 多选图片自动批量上传 | 标题可自定义 | 图片间距和圆角支持实时预览 | 下载和复制都可选择标清/高清/无损PNG质量 | 支持粘贴上传图片</div>
     
     <!-- 操作按钮 -->
     <div class="action-area">
@@ -830,7 +817,7 @@
             const imageBoxes = document.querySelectorAll('.image-item');
             
             imageBoxes.forEach(box => {
-                // 粘贴图片
+                // 粘贴图片（保留原有功能）
                 box.addEventListener('paste', handlePaste);
                 
                 // 拖拽上传
@@ -939,23 +926,63 @@
             });
         }
         
-        // 处理粘贴图片
+        // 处理粘贴图片（增强版：支持页面任意位置粘贴）
         function handlePaste(e) {
             e.preventDefault();
             const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-            const index = e.target.closest('.image-item').dataset.index;
             
+            // 找到第一个可用的图片文件
+            let imageFile = null;
             for (let item of items) {
-                if (item.kind === 'file') {
-                    const file = item.getAsFile();
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        imageBase64List[index] = event.target.result;
-                        updateImageBox(index, event.target.result);
-                    };
-                    reader.readAsDataURL(file);
+                if (item.kind === 'file' && item.type.startsWith('image/')) {
+                    imageFile = item.getAsFile();
+                    break;
                 }
             }
+            
+            if (!imageFile) return;
+            
+            // 确定要粘贴到哪个图片容器
+            let targetIndex = null;
+            const targetElement = e.target.closest('.image-item');
+            
+            if (targetElement) {
+                // 如果在图片容器内粘贴，使用当前容器
+                targetIndex = targetElement.dataset.index;
+            } else {
+                // 如果在页面其他位置粘贴，找第一个空的图片容器
+                const keys = Object.keys(imageBase64List).sort((a, b) => a - b);
+                for (let key of keys) {
+                    if (!imageBase64List[key]) {
+                        targetIndex = key;
+                        break;
+                    }
+                }
+                
+                // 如果没有空容器，创建新的
+                if (!targetIndex) {
+                    currentBoxIndex++;
+                    targetIndex = currentBoxIndex;
+                    imageBase64List[targetIndex] = '';
+                    
+                    // 重建布局以显示新容器
+                    if (selectedLayout === 'five-grid') {
+                        rebuildFiveGridStructure();
+                    } else {
+                        rebuildHorizontalStructure();
+                    }
+                    initImageBoxEvents();
+                    initDragDropSwap();
+                }
+            }
+            
+            // 读取图片并显示
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                imageBase64List[targetIndex] = event.target.result;
+                updateImageBox(targetIndex, event.target.result);
+            };
+            reader.readAsDataURL(imageFile);
         }
         
         // 处理拖拽上传
@@ -1260,6 +1287,9 @@
             applyGapSettings();
             applyRadiusSettings();
         });
+        
+        // 新增：全局粘贴事件监听（页面任意位置粘贴）
+        document.addEventListener('paste', handlePaste);
         
         // 初始化
         window.addEventListener('load', () => {
