@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>五图拼接</title> <!-- 核心修改：网页标题改为五图拼接 -->
+    <title>五图拼接</title>
+    <!-- 添加Favicon图标 -->
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="shortcut icon" type="image/png" href="favicon.png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         /* 全局样式重置 */
@@ -1060,7 +1063,7 @@
             }
         }
         
-        // 更新图片容器显示（添加has-image类隐藏占位符）
+        // 更新图片显示
         function updateImageBox(index, base64) {
             const box = document.getElementById(`imageBox${index}`);
             if (box) {
@@ -1072,8 +1075,6 @@
                 }
                 img.src = base64;
                 box.classList.add('has-image');
-                // 确保圆角样式生效
-                box.style.borderRadius = `${radiusInput.value}px`;
             }
         }
         
@@ -1082,59 +1083,45 @@
             if (isInserting) return;
             isInserting = true;
             
-            const insertIndex = parseInt(index);
             currentBoxIndex++;
+            const newIndex = currentBoxIndex;
             
-            // 更新索引大于等于插入位置的图片
-            const keys = Object.keys(imageBase64List).map(Number).sort((a, b) => b - a);
+            // 调整索引（将当前及之后的索引+1）
+            const keys = Object.keys(imageBase64List).sort((a, b) => b - a);
             keys.forEach(key => {
-                if (key >= insertIndex) {
-                    imageBase64List[key + 1] = imageBase64List[key];
-                    
-                    const box = document.getElementById(`imageBox${key}`);
-                    if (box) {
-                        box.id = `imageBox${key + 1}`;
-                        box.dataset.index = key + 1;
-                        if (box.querySelector('img')) {
-                            box.querySelector('img').alt = `游戏图片${key + 1}`;
-                        }
-                    }
+                if (parseInt(key) >= parseInt(index)) {
+                    imageBase64List[parseInt(key) + 1] = imageBase64List[key];
                 }
             });
             
-            // 创建新图片容器
-            imageBase64List[insertIndex] = '';
+            // 新增空图片容器
+            imageBase64List[newIndex] = '';
+            
+            // 重建布局
             if (selectedLayout === 'five-grid') {
                 rebuildFiveGridStructure();
             } else {
                 rebuildHorizontalStructure();
             }
             
+            // 重新绑定事件
             initImageBoxEvents();
             initDragDropSwap();
+            
             isInserting = false;
         }
         
         // 删除图片
         function deleteImage(index) {
-            const deleteIndex = parseInt(index);
-            delete imageBase64List[deleteIndex];
+            // 删除图片数据
+            delete imageBase64List[index];
             
-            // 更新索引大于删除位置的图片
-            const keys = Object.keys(imageBase64List).map(Number).sort((a, b) => a - b);
-            keys.forEach(key => {
-                if (key > deleteIndex) {
-                    imageBase64List[key - 1] = imageBase64List[key];
+            // 调整索引
+            const keys = Object.keys(imageBase64List).sort((a, b) => a - b);
+            keys.forEach((key, i) => {
+                if (parseInt(key) > parseInt(index)) {
+                    imageBase64List[parseInt(key) - 1] = imageBase64List[key];
                     delete imageBase64List[key];
-                    
-                    const box = document.getElementById(`imageBox${key}`);
-                    if (box) {
-                        box.id = `imageBox${key - 1}`;
-                        box.dataset.index = key - 1;
-                        if (box.querySelector('img')) {
-                            box.querySelector('img').alt = `游戏图片${key - 1}`;
-                        }
-                    }
                 }
             });
             
@@ -1145,6 +1132,7 @@
                 rebuildHorizontalStructure();
             }
             
+            // 重新绑定事件
             initImageBoxEvents();
             initDragDropSwap();
         }
@@ -1152,13 +1140,14 @@
         // 应用间距设置
         function applyGapSettings() {
             const gapValue = gapInput.value;
+            imageContainer.style.gap = `${gapValue}px`;
+            
+            // 五图布局特殊处理
             if (selectedLayout === 'five-grid') {
-                imageContainer.style.gap = `${gapValue}px`;
                 const bodyContainer = imageContainer.querySelector('.five-grid-body');
                 if (bodyContainer) {
                     bodyContainer.style.gap = `${gapValue}px`;
                 }
-            } else {
                 imageContainer.style.gap = `${gapValue}px`;
             }
         }
@@ -1172,6 +1161,28 @@
             });
         }
         
+        // 间距输入框和滑块联动
+        gapInput.addEventListener('input', () => {
+            gapSlider.value = gapInput.value;
+            applyGapSettings();
+        });
+        
+        gapSlider.addEventListener('input', () => {
+            gapInput.value = gapSlider.value;
+            applyGapSettings();
+        });
+        
+        // 圆角输入框和滑块联动
+        radiusInput.addEventListener('input', () => {
+            radiusSlider.value = radiusInput.value;
+            applyRadiusSettings();
+        });
+        
+        radiusSlider.addEventListener('input', () => {
+            radiusInput.value = radiusSlider.value;
+            applyRadiusSettings();
+        });
+        
         // 质量选择
         qualityBtns.forEach(btn => {
             btn.addEventListener('click', () => {
@@ -1181,119 +1192,95 @@
             });
         });
         
-        // 下载整图
-        downloadBtn.addEventListener('click', () => {
-            loading.style.display = 'block';
-            
-            setTimeout(() => {
-                const exportContainer = document.getElementById('export-container');
-                const qualityOptions = {
-                    standard: { scale: 1, quality: 0.7 },
-                    hd: { scale: 2, quality: 0.9 },
-                    lossless: { scale: 3, quality: 1.0 }
-                };
-                
-                const options = {
-                    scale: qualityOptions[selectedQuality].scale,
-                    quality: qualityOptions[selectedQuality].quality,
-                    useCORS: true,
-                    logging: false,
-                    backgroundColor: '#1f1e25'
-                };
-                
-                html2canvas(exportContainer, options).then(canvas => {
-                    loading.style.display = 'none';
-                    const link = document.createElement('a');
-                    link.download = `${exportTitle.textContent}.png`;
-                    link.href = canvas.toDataURL('image/png', qualityOptions[selectedQuality].quality);
-                    link.click();
-                });
-            }, 100);
-        });
-        
-        // 复制整图
-        copyBtn.addEventListener('click', () => {
-            loading.style.display = 'block';
-            
-            setTimeout(() => {
-                const exportContainer = document.getElementById('export-container');
-                const qualityOptions = {
-                    standard: { scale: 1, quality: 0.7 },
-                    hd: { scale: 2, quality: 0.9 },
-                    lossless: { scale: 3, quality: 1.0 }
-                };
-                
-                const options = {
-                    scale: qualityOptions[selectedQuality].scale,
-                    quality: qualityOptions[selectedQuality].quality,
-                    useCORS: true,
-                    logging: false,
-                    backgroundColor: '#1f1e25'
-                };
-                
-                html2canvas(exportContainer, options).then(canvas => {
-                    canvas.toBlob(blob => {
-                        loading.style.display = 'none';
-                        const item = new ClipboardItem({ 'image/png': blob });
-                        navigator.clipboard.write([item]).then(() => {
-                            alert('图片已复制到剪贴板！');
-                        }).catch(err => {
-                            alert('复制失败：' + err);
-                        });
-                    });
-                });
-            }, 100);
-        });
-        
-        // 添加图片按钮
+        // 添加图片按钮点击事件
         addImageBtn.addEventListener('click', () => {
             currentBoxIndex++;
             imageBase64List[currentBoxIndex] = '';
             
+            // 重建布局
             if (selectedLayout === 'five-grid') {
                 rebuildFiveGridStructure();
             } else {
                 rebuildHorizontalStructure();
             }
             
+            // 重新绑定事件
             initImageBoxEvents();
             initDragDropSwap();
         });
         
-        // 实时预览 - 间距滑块和输入框联动
-        gapSlider.addEventListener('input', () => {
-            gapInput.value = gapSlider.value;
-            applyGapSettings();
+        // 下载整图
+        downloadBtn.addEventListener('click', async () => {
+            loading.style.display = 'block';
+            
+            try {
+                // 设置导出质量
+                let scale = 1;
+                if (selectedQuality === 'standard') scale = 0.7;
+                else if (selectedQuality === 'hd') scale = 1.5;
+                else if (selectedQuality === 'lossless') scale = 2;
+                
+                const canvas = await html2canvas(document.getElementById('export-container'), {
+                    scale: scale,
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: '#1f1e25',
+                    windowWidth: document.getElementById('export-container').scrollWidth,
+                    windowHeight: document.getElementById('export-container').scrollHeight
+                });
+                
+                const link = document.createElement('a');
+                link.download = `${exportTitle.textContent || '五图拼接'}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (error) {
+                alert('下载失败：' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
         });
         
-        gapInput.addEventListener('input', () => {
-            gapSlider.value = gapInput.value;
-            applyGapSettings();
+        // 复制整图
+        copyBtn.addEventListener('click', async () => {
+            loading.style.display = 'block';
+            
+            try {
+                // 设置复制质量
+                let scale = 1;
+                if (selectedQuality === 'standard') scale = 0.7;
+                else if (selectedQuality === 'hd') scale = 1.5;
+                else if (selectedQuality === 'lossless') scale = 2;
+                
+                const canvas = await html2canvas(document.getElementById('export-container'), {
+                    scale: scale,
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: '#1f1e25',
+                    windowWidth: document.getElementById('export-container').scrollWidth,
+                    windowHeight: document.getElementById('export-container').scrollHeight
+                });
+                
+                canvas.toBlob(blob => {
+                    const item = new ClipboardItem({ 'image/png': blob });
+                    navigator.clipboard.write([item]).then(() => {
+                        alert('图片已复制到剪贴板！');
+                    }).catch(err => {
+                        alert('复制失败：' + err.message);
+                    }).finally(() => {
+                        loading.style.display = 'none';
+                    });
+                });
+            } catch (error) {
+                alert('复制失败：' + error.message);
+                loading.style.display = 'none';
+            }
         });
         
-        // 实时预览 - 圆角滑块和输入框联动
-        radiusSlider.addEventListener('input', () => {
-            radiusInput.value = radiusSlider.value;
-            applyRadiusSettings();
-        });
-        
-        radiusInput.addEventListener('input', () => {
-            radiusSlider.value = radiusInput.value;
-            applyRadiusSettings();
-        });
-        
-        // 确认设置按钮（保留函数但隐藏按钮）
-        applySettingsBtn.addEventListener('click', () => {
-            applyGapSettings();
-            applyRadiusSettings();
-        });
-        
-        // 新增：全局粘贴事件监听（页面任意位置粘贴）
+        // 页面粘贴事件（全局）
         document.addEventListener('paste', handlePaste);
         
         // 初始化
         window.addEventListener('load', () => {
-            // 初始化应用间距和圆角设置
             applyGapSettings();
             applyRadiusSettings();
             initImageBoxEvents();
